@@ -15,3 +15,9 @@ IMG_SIZE = 64
 # Below this confidence, the result is reported as "uncertain".
 # Chosen from the test evaluation: >=70% -> 96.3% accurate, <70% -> ~60% accurate.
 UNCERTAIN_THRESHOLD = 0.70
+
+# ---------- RAG ----------
+KB_DIR = PROJECT_ROOT / "knowledge_base"
+CHROMA_DIR = PROJECT_ROOT / "chroma_db"
+KB_COLLECTION = "wafer_kb"
+EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
