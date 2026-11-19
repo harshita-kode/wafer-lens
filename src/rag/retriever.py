@@ -111,6 +111,38 @@ class KnowledgeRetriever:
             chunks += self._search_pattern("general", query)[:1]
         return chunks
 
+    def retrieve_for_prediction(self, prediction: dict, k: int = 3) -> dict:
+        """Use a classifier prediction to decide which patterns to look up.
+
+        Confident -> notes for the predicted pattern.
+        Uncertain -> notes for the top 2 patterns, so the report can cover both.
+        """
+        if prediction["uncertain"]:
+            patterns = [p["label"] for p in prediction["top_k"][:2]]
+        else:
+            patterns = [prediction["label"]]
+
+        chunks, seen = [], set()
+        for i, pattern in enumerate(patterns):
+            is_last = i == len(patterns) - 1
+            for chunk in self.retrieve(pattern, k=k, include_general=is_last):
+                if chunk["id"] not in seen:
+                    seen.add(chunk["id"])
+                    chunks.append(chunk)
+
+        return {"patterns": patterns, "chunks": chunks}
+
+
+_default: KnowledgeRetriever | None = None
+
+
+def get_retriever() -> KnowledgeRetriever:
+    """Create the retriever on first use, then reuse it."""
+    global _default
+    if _default is None:
+        _default = KnowledgeRetriever()
+    return _default
+
 
 if __name__ == "__main__":
     r = KnowledgeRetriever()
@@ -127,3 +159,15 @@ if __name__ == "__main__":
     print("\nFree-text search: 'failures along a thin line across the wafer'")
     for c in r.search("failures along a thin line across the wafer"):
         print(f"  {c['similarity']:.2f}  {c['pattern']:10s} | {c['section']}")
+
+        print("\nUncertain prediction (Loc 55%, Edge-Loc 30%):")
+    fake_prediction = {
+        "label": "Loc", "confidence": 0.55, "uncertain": True,
+        "top_k": [{"label": "Loc", "confidence": 0.55},
+                  {"label": "Edge-Loc", "confidence": 0.30},
+                  {"label": "Scratch", "confidence": 0.10}],
+    }
+    result = r.retrieve_for_prediction(fake_prediction)
+    print(f"  Patterns looked up: {result['patterns']}")
+    for c in result["chunks"]:
+        print(f"  {c['pattern']:10s} | {c['section']}")
