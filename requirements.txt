@@ -10,3 +10,4 @@ ipykernel
 sentence-transformers
 chromadb
 python-frontmatter
+pytest
