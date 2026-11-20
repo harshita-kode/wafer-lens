@@ -11,3 +11,5 @@ sentence-transformers
 chromadb
 python-frontmatter
 pytest
+python-dotenv 
+google-genai
