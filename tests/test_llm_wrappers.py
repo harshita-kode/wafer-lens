@@ -1,6 +1,7 @@
 import pytest
 
 from src.llm.client import RetryingLLM
+from src.llm.client import CachedLLM
 
 
 class FlakyLLM:
@@ -43,3 +44,44 @@ def test_backoff_doubles_each_time():
     waits = []
     RetryingLLM(FlakyLLM(failures=3), base_delay=2, sleep=waits.append).generate("s", "u")
     assert waits == [2, 4, 8]
+
+
+
+class CountingLLM:
+    def __init__(self, reply="answer"):
+        self.reply, self.calls = reply, 0
+
+    def generate(self, system, user):
+        self.calls += 1
+        return self.reply
+
+
+def test_cache_returns_saved_answer(tmp_path):
+    inner = CountingLLM()
+    llm = CachedLLM(inner, tmp_path, model="m")
+    assert llm.generate("s", "u") == "answer"
+    assert llm.generate("s", "u") == "answer"
+    assert inner.calls == 1 and llm.hits == 1
+
+
+def test_different_prompt_is_a_cache_miss(tmp_path):
+    inner = CountingLLM()
+    llm = CachedLLM(inner, tmp_path, model="m")
+    llm.generate("s", "u1")
+    llm.generate("s", "u2")
+    assert inner.calls == 2
+
+
+def test_model_name_is_part_of_the_key(tmp_path):
+    inner = CountingLLM()
+    CachedLLM(inner, tmp_path, model="a").generate("s", "u")
+    CachedLLM(inner, tmp_path, model="b").generate("s", "u")
+    assert inner.calls == 2
+
+
+def test_empty_answers_are_not_cached(tmp_path):
+    inner = CountingLLM(reply="")
+    llm = CachedLLM(inner, tmp_path, model="m")
+    llm.generate("s", "u")
+    llm.generate("s", "u")
+    assert inner.calls == 2

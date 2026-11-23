@@ -3,8 +3,12 @@ import os
 from typing import Protocol
 import logging
 import time
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 
-from src.config import LLM_MAX_TOKENS, LLM_MODEL, LLM_PROVIDER, LLM_TEMPERATURE
+from src.config import LLM_MAX_TOKENS, LLM_MODEL, LLM_PROVIDER, LLM_TEMPERATURE, LLM_CACHE_ENABLED, LLM_CACHE_DIR
 
 
 class LLMClient(Protocol):
@@ -103,14 +107,51 @@ class RetryingLLM:
                 logger.warning("LLM call failed (%s). Retrying in %.0fs...", type(e).__name__, delay)
                 self.sleep(delay)
 
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+class CachedLLM:
+    """Wraps any LLM client and stores responses on disk, keyed by a hash of the full prompt."""
+
+    def __init__(self, inner: LLMClient, cache_dir: Path, model: str):
+        self.inner, self.cache_dir, self.model = inner, Path(cache_dir), model
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.hits = self.misses = 0
+
+    def _key(self, system: str, user: str) -> str:
+        return hashlib.sha256(f"{self.model}\n{system}\n{user}".encode("utf-8")).hexdigest()
+
+    def generate(self, system: str, user: str) -> str:
+        path = self.cache_dir / f"{self._key(system, user)}.json"
+        if path.exists():
+            self.hits += 1
+            return json.loads(path.read_text(encoding="utf-8"))["response"]
+
+        self.misses += 1
+        response = self.inner.generate(system, user)
+        if response:                                  # never cache empty answers
+            path.write_text(json.dumps({
+                "model": self.model,
+                "created": datetime.now(timezone.utc).isoformat(),
+                "response": response,
+            }, indent=2), encoding="utf-8")
+        return response
+
 _PROVIDERS = {"gemini": GeminiClient, "anthropic": AnthropicClient, "openai": OpenAIClient}
 
 
-def get_llm(provider: str = LLM_PROVIDER, model: str = LLM_MODEL) -> LLMClient:
+def get_llm(provider: str = LLM_PROVIDER, model: str = LLM_MODEL,
+            use_cache: bool = LLM_CACHE_ENABLED) -> LLMClient:
     if provider not in _PROVIDERS:
         raise ValueError(f"Unknown LLM_PROVIDER '{provider}'. Use one of {list(_PROVIDERS)}")
-    base = _PROVIDERS[provider](model, LLM_TEMPERATURE, LLM_MAX_TOKENS)
-    return RetryingLLM(base)
+    llm: LLMClient = RetryingLLM(_PROVIDERS[provider](model, LLM_TEMPERATURE, LLM_MAX_TOKENS))
+    if use_cache:
+        llm = CachedLLM(llm, LLM_CACHE_DIR, f"{provider}:{model}")
+    return llm
 
 
 if __name__ == "__main__":
