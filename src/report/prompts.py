@@ -9,7 +9,8 @@ Rules:
 - Use cautious wording such as "often associated with", "commonly linked to" or "may indicate". Never say a pattern "is caused by" something.
 - Do not state the confidence numbers; they are shown separately.
 - If the notes do not cover something, say so briefly instead of guessing.
-- Keep it short: 2-4 bullets per section, plain English, no extra headings."""
+- Keep it short: 2-4 bullets per section, plain English, no extra headings.
+- Start every bullet with "- " (a hyphen and a space). Do not use "*" or numbered lists."""
 
 
 def source_key(source: dict) -> str:

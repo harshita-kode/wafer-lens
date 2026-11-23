@@ -97,3 +97,16 @@ def test_prompt_uses_only_global_labels():
     fake = FakeLLM(GOOD_REPLY)
     write_report(CONFIDENT, RETRIEVAL, llm=fake)
     assert "[1]" not in fake.last_user and "[S1]" in fake.last_user
+
+from src.report.writer import normalize_bullets
+
+
+def test_star_bullets_become_hyphens():
+    text = "**What this usually means:**\n* First [S1]\n  * Nested [S2]"
+    assert normalize_bullets(text) == "**What this usually means:**\n- First [S1]\n  - Nested [S2]"
+
+
+def test_star_bullet_reply_is_normalized_in_report():
+    reply = "**What this usually means:**\n* Handling damage [S1]"
+    report = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(reply))
+    assert "- Handling damage [S1]" in report.markdown

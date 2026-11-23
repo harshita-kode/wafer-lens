@@ -8,6 +8,13 @@ from src.report.prompts import (SYSTEM_PROMPT, build_user_prompt, format_source,
 
 CITATION = re.compile(r"\[(S\d+)\]")
 
+BULLET = re.compile(r"^(\s*)[*•]\s+", flags=re.MULTILINE)
+
+
+def normalize_bullets(text: str) -> str:
+    """Turn '* item' or '• item' into '- item'. Bold headings like '**X:**' are untouched."""
+    return BULLET.sub(r"\1- ", text)
+
 
 @dataclass
 class Report:
@@ -61,6 +68,8 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
         warnings.append(f"LLM unavailable, used template report ({e})")
         body = template_body(patterns, notes)
         generated_by = "template"
+
+    body = normalize_bullets(body)
 
     # 2. Check citations against the sources we actually provided
     known = {label for label, _ in labels.values()}
