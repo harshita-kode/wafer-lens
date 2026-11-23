@@ -2,6 +2,7 @@ import pytest
 
 from src.llm.client import RetryingLLM
 from src.llm.client import CachedLLM
+from src.llm.client import RetryingLLM, TruncatedResponseError
 
 
 class FlakyLLM:
@@ -85,3 +86,28 @@ def test_empty_answers_are_not_cached(tmp_path):
     llm.generate("s", "u")
     llm.generate("s", "u")
     assert inner.calls == 2
+
+class AlwaysTruncates:
+    def __init__(self):
+        self.calls = 0
+
+    def generate(self, system, user):
+        self.calls += 1
+        raise TruncatedResponseError("cut off")
+
+
+def test_truncation_is_not_retried():
+    inner = AlwaysTruncates()
+    with pytest.raises(TruncatedResponseError):
+        RetryingLLM(inner, sleep=no_sleep).generate("s", "u")
+    assert inner.calls == 1
+
+
+def test_truncated_answer_is_not_cached(tmp_path):
+    inner = AlwaysTruncates()
+    llm = CachedLLM(inner, tmp_path, model="m")
+    for _ in range(2):
+        with pytest.raises(TruncatedResponseError):
+            llm.generate("s", "u")
+    assert inner.calls == 2
+    assert list(tmp_path.iterdir()) == []

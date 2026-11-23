@@ -1,5 +1,6 @@
 from src.report.prompts import label_sources, renumber_citations
 from src.report.writer import write_report
+from src.llm.client import TruncatedResponseError
 
 SRC_A = {"id": 1, "title": "Paper A", "authors": "Author A", "year": 2024, "url": "https://a"}
 SRC_B = {"id": 2, "title": "Paper B", "authors": "Author B", "year": 2025, "url": "https://b"}
@@ -109,4 +110,15 @@ def test_star_bullets_become_hyphens():
 def test_star_bullet_reply_is_normalized_in_report():
     reply = "**What this usually means:**\n* Handling damage [S1]"
     report = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(reply))
-    assert "- Handling damage [S1]" in report.markdown
+    assert "- Handling damage [S1]" in report.markdown\
+
+
+class TruncatingLLM:
+    def generate(self, system, user):
+        raise TruncatedResponseError("response cut off at 1500 output tokens")
+
+
+def test_truncated_response_falls_back_to_template():
+    report = write_report(CONFIDENT, RETRIEVAL, llm=TruncatingLLM())
+    assert report.generated_by == "template"
+    assert any("cut off" in w for w in report.warnings)

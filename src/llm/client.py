@@ -21,6 +21,8 @@ def _require_key(name: str) -> str:
         raise RuntimeError(f"{name} is not set. Add it to your .env file (see .env.example).")
     return key
 
+class TruncatedResponseError(RuntimeError):
+    """The model hit its output limit before finishing the answer."""
 
 class GeminiClient:
     def __init__(self, model: str, temperature: float, max_tokens: int):
@@ -41,6 +43,9 @@ class GeminiClient:
                 max_output_tokens=self.max_tokens,
             ),
         )
+        candidate = (response.candidates or [None])[0]
+        if candidate is not None and "MAX_TOKENS" in str(candidate.finish_reason):
+            raise TruncatedResponseError(f"response cut off at {self.max_tokens} output tokens")
         return (response.text or "").strip()
 
 
@@ -59,6 +64,8 @@ class AnthropicClient:
             system=system,
             messages=[{"role": "user", "content": user}],
         )
+        if response.stop_reason == "max_tokens":
+            raise TruncatedResponseError(f"response cut off at {self.max_tokens} output tokens")
         return "".join(b.text for b in response.content if b.type == "text").strip()
 
 
@@ -76,6 +83,8 @@ class OpenAIClient:
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
         )
+        if response.choices[0].finish_reason == "length":
+            raise TruncatedResponseError(f"response cut off at {self.max_tokens} output tokens")
         return (response.choices[0].message.content or "").strip()
 
 logger = logging.getLogger(__name__)

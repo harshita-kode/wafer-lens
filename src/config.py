@@ -30,7 +30,7 @@ EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 LLM_MODEL = os.getenv("LLM_MODEL", "gemini-flash-latest")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
-LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1500"))
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "4096"))
 
 LLM_CACHE_ENABLED = os.getenv("LLM_CACHE_ENABLED", "true").lower() == "true"
 LLM_CACHE_DIR = PROJECT_ROOT / ".cache" / "llm"
