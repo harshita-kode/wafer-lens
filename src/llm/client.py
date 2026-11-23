@@ -1,6 +1,8 @@
 """One small interface over several LLM providers: generate(system, user) -> text."""
 import os
 from typing import Protocol
+import logging
+import time
 
 from src.config import LLM_MAX_TOKENS, LLM_MODEL, LLM_PROVIDER, LLM_TEMPERATURE
 
@@ -72,6 +74,34 @@ class OpenAIClient:
         )
         return (response.choices[0].message.content or "").strip()
 
+logger = logging.getLogger(__name__)
+
+RETRYABLE_MARKERS = ("429", "500", "502", "503", "504", "RESOURCE_EXHAUSTED",
+                     "UNAVAILABLE", "overloaded", "timeout", "timed out")
+
+
+def _is_retryable(error: Exception) -> bool:
+    message = str(error)
+    return any(marker.lower() in message.lower() for marker in RETRYABLE_MARKERS)
+
+
+class RetryingLLM:
+    """Wraps any LLM client and retries temporary failures with exponential backoff."""
+
+    def __init__(self, inner: LLMClient, retries: int = 3, base_delay: float = 2.0,
+                 sleep=time.sleep):
+        self.inner, self.retries, self.base_delay, self.sleep = inner, retries, base_delay, sleep
+
+    def generate(self, system: str, user: str) -> str:
+        for attempt in range(self.retries + 1):
+            try:
+                return self.inner.generate(system, user)
+            except Exception as e:
+                if attempt == self.retries or not _is_retryable(e):
+                    raise
+                delay = self.base_delay * 2 ** attempt
+                logger.warning("LLM call failed (%s). Retrying in %.0fs...", type(e).__name__, delay)
+                self.sleep(delay)
 
 _PROVIDERS = {"gemini": GeminiClient, "anthropic": AnthropicClient, "openai": OpenAIClient}
 
@@ -79,7 +109,8 @@ _PROVIDERS = {"gemini": GeminiClient, "anthropic": AnthropicClient, "openai": Op
 def get_llm(provider: str = LLM_PROVIDER, model: str = LLM_MODEL) -> LLMClient:
     if provider not in _PROVIDERS:
         raise ValueError(f"Unknown LLM_PROVIDER '{provider}'. Use one of {list(_PROVIDERS)}")
-    return _PROVIDERS[provider](model, LLM_TEMPERATURE, LLM_MAX_TOKENS)
+    base = _PROVIDERS[provider](model, LLM_TEMPERATURE, LLM_MAX_TOKENS)
+    return RetryingLLM(base)
 
 
 if __name__ == "__main__":
