@@ -1,0 +1,87 @@
+{
+  "prediction": {
+    "label": "Edge-Loc",
+    "confidence": 0.6853,
+    "uncertain": true,
+    "top_k": [
+      {
+        "label": "Edge-Loc",
+        "confidence": 0.6853
+      },
+      {
+        "label": "Edge-Ring",
+        "confidence": 0.1538
+      },
+      {
+        "label": "none",
+        "confidence": 0.1454
+      }
+    ]
+  },
+  "patterns": [
+    "Edge-Loc",
+    "Edge-Ring"
+  ],
+  "report_markdown": "**Pattern detected:** Edge-Loc (69% confidence), uncertain; possibly Edge-Ring (15%)\n\n**What this usually means:**\n- *Edge-Loc:* Often associated with irregular temperature during annealing or impurities from a load-lock valve [S1]\n- *Edge-Loc:* Commonly traced to handling contact or a local fault at the edge [S2]\n- *Edge-Ring:* Often associated with abnormal temperature control during rapid thermal processing (RTP) or a cold process [S1]\n- *Edge-Ring:* Commonly traced to deposition and etch effects at the wafer edge [S2]\n- *Edge-Ring:* A full ring points at processes that treat the edge differently by design, and the hardware around the wafer rim [S2]\n\n**Suggested checks:**\n- *Edge-Loc:* Handler and gripper logs [S2]\n- *Edge-Loc:* Thermal process settings, since Edge-Loc and Scratch call for different fixes: thermal tuning for Edge-Loc, mechanical handling checks for Scratch [S1]\n- *Edge-Ring:* The edge hardware of the process chamber [S2]\n- *Edge-Ring:* Tool history, and whether the ring appears across several lots; a rising edge-ring rate over weeks can signal slow drift [S2]\n\n**Similar past wafers:** 3 of the 5 most similar past wafers were labelled Edge-Loc.\n- Edge-Loc (similarity 0.99)\n- Edge-Loc (similarity 0.99)\n- none (similarity 0.98)\n- Edge-Loc (similarity 0.98)\n- none (similarity 0.98)\n\n**Sources:**\n- [S1] Yeonhong Kim, Jonghyeok Im, Monu Nath Baitha, Kyoungsik Kim (2026). Bridging Quantum Computing Paradigms toward Semiconductor Yield: A Controlled CV-versus-DV Comparison on Wafer-Map Defect Classification. https://arxiv.org/abs/2607.00961\n- [S2] Averroes (2026). Wafer Defect Map Analysis: How to Read Spatial Patterns and Find Root Causes. https://averroes.ai/blog/wafer-defect-map-analysis",
+  "sources": [
+    {
+      "label": "S1",
+      "id": 3,
+      "title": "Bridging Quantum Computing Paradigms toward Semiconductor Yield: A Controlled CV-versus-DV Comparison on Wafer-Map Defect Classification",
+      "authors": "Yeonhong Kim, Jonghyeok Im, Monu Nath Baitha, Kyoungsik Kim",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2607.00961"
+    },
+    {
+      "label": "S2",
+      "id": 4,
+      "title": "Wafer Defect Map Analysis: How to Read Spatial Patterns and Find Root Causes",
+      "authors": "Averroes",
+      "year": 2026,
+      "url": "https://averroes.ai/blog/wafer-defect-map-analysis"
+    }
+  ],
+  "similar_wafers": [
+    {
+      "id": "train-17328",
+      "label": "Edge-Loc",
+      "index": 17328,
+      "similarity": 0.9879
+    },
+    {
+      "id": "train-18859",
+      "label": "Edge-Loc",
+      "index": 18859,
+      "similarity": 0.9852
+    },
+    {
+      "id": "train-773",
+      "label": "none",
+      "index": 773,
+      "similarity": 0.9847
+    },
+    {
+      "id": "train-1605",
+      "label": "Edge-Loc",
+      "index": 1605,
+      "similarity": 0.9846
+    },
+    {
+      "id": "train-17228",
+      "label": "none",
+      "index": 17228,
+      "similarity": 0.9846
+    }
+  ],
+  "generated_by": "template",
+  "warnings": [
+    "LLM unavailable, used template report (503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}})"
+  ],
+  "timings_ms": {
+    "classify": 2.6,
+    "similar": 52.7,
+    "retrieve": 71.9,
+    "report": 123423.9,
+    "total": 123551.1
+  }
+}
