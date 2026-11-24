@@ -34,3 +34,7 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "4096"))
 
 LLM_CACHE_ENABLED = os.getenv("LLM_CACHE_ENABLED", "true").lower() == "true"
 LLM_CACHE_DIR = PROJECT_ROOT / ".cache" / "llm"
+
+# ---------- Similar wafers ----------
+SIMILAR_COLLECTION = "wafer_fingerprints"
+SIMILAR_K = 5

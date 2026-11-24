@@ -1,0 +1,6 @@
+{
+  "k": 5,
+  "wafers": 1000,
+  "precision_at_k": 0.889,
+  "knn_vote_accuracy": 0.919
+}
