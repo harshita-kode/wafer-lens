@@ -32,6 +32,12 @@ def format_header(prediction: dict) -> str:
         line += f", uncertain; possibly {second['label']} ({second['confidence']:.0%})"
     return line
 
+def format_similar(similar: list[dict], predicted_label: str) -> str:
+    same = sum(s["label"] == predicted_label for s in similar)
+    lines = [f"**Similar past wafers:** {same} of the {len(similar)} most similar "
+             f"past wafers were labelled {predicted_label}."]
+    lines += [f"- {s['label']} (similarity {s['similarity']:.2f})" for s in similar]
+    return "\n".join(lines)
 
 def _bullets(text: str) -> list[str]:
     return [line.strip() for line in text.splitlines() if line.strip().startswith("- ")]
@@ -51,7 +57,8 @@ def template_body(patterns: list[str], notes: list[tuple[dict, str]]) -> str:
     return "\n".join(lines).strip()
 
 
-def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None) -> Report:
+def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None,
+                 similar: list[dict] | None = None) -> Report:
     chunks, patterns = retrieval["chunks"], retrieval["patterns"]
     labels = label_sources(chunks)
     notes = [(c, renumber_citations(c, labels)) for c in chunks]
@@ -85,6 +92,8 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
     # 3. Assemble: header (code) + body (LLM) + sources (code)
     cited_sources = [{"label": label, **s} for label, s in labels.values() if label in valid_cited]
     parts = [format_header(prediction), body]
+    if similar:
+        parts.append(format_similar(similar, prediction["label"]))
     if cited_sources:
         parts.append("**Sources:**\n" + "\n".join(
             f"- [{s['label']}] {format_source(s)}" for s in cited_sources))

@@ -122,3 +122,22 @@ def test_truncated_response_falls_back_to_template():
     report = write_report(CONFIDENT, RETRIEVAL, llm=TruncatingLLM())
     assert report.generated_by == "template"
     assert any("cut off" in w for w in report.warnings)
+
+SIMILAR = [{"label": "Scratch", "similarity": 0.97, "index": 1, "id": "train-1"},
+           {"label": "Scratch", "similarity": 0.95, "index": 2, "id": "train-2"},
+           {"label": "Loc", "similarity": 0.93, "index": 3, "id": "train-3"}]
+
+
+def test_similar_wafers_section_counts_matches():
+    report = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(GOOD_REPLY), similar=SIMILAR)
+    assert "2 of the 3 most similar past wafers were labelled Scratch" in report.markdown
+
+
+def test_similar_section_comes_before_sources():
+    md = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(GOOD_REPLY), similar=SIMILAR).markdown
+    assert md.index("Similar past wafers") < md.index("**Sources:**")
+
+
+def test_no_similar_section_when_none_given():
+    md = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(GOOD_REPLY)).markdown
+    assert "Similar past wafers" not in md
