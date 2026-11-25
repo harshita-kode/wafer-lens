@@ -10,7 +10,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 from src.api.schemas import (AnalysisResponse, AnalyzeRequest, ErrorResponse,
-                             HealthResponse)
+                             HealthResponse, SampleList, SampleWafer)
 from src.config import API_VERSION, SAMPLES_DIR
 
 logger = logging.getLogger("waferlens.api")
@@ -102,6 +102,21 @@ def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DI
 
         result = await run_in_threadpool(pipeline.analyze, check_size(wafer))
         return result.to_dict()
+
+    def sample_names(request: Request) -> list[str]:
+        return sorted(p.stem for p in request.app.state.samples_dir.glob("*.npy"))
+
+    @app.get("/samples", response_model=SampleList, tags=["samples"])
+    def list_samples(request: Request):
+        return SampleList(samples=sample_names(request))
+
+    @app.get("/samples/{name}", response_model=SampleWafer,
+             responses={404: {"model": ErrorResponse}}, tags=["samples"])
+    def get_sample(name: str, request: Request):
+        if name not in sample_names(request):
+            raise HTTPException(status_code=404, detail=f"Unknown sample '{name}'")
+        wafer = np.load(request.app.state.samples_dir / f"{name}.npy", allow_pickle=False)
+        return SampleWafer(name=name, wafer_map=wafer.tolist())
 
     return app
 
