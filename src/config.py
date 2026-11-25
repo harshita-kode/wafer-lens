@@ -38,3 +38,7 @@ LLM_CACHE_DIR = PROJECT_ROOT / ".cache" / "llm"
 # ---------- Similar wafers ----------
 SIMILAR_COLLECTION = "wafer_fingerprints"
 SIMILAR_K = 5
+
+# ---------- API ----------
+SAMPLES_DIR = PROJECT_ROOT / "samples"
+API_VERSION = "1.0.0"
