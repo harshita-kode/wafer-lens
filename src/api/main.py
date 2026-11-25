@@ -1,0 +1,109 @@
+"""WaferLens HTTP API."""
+import io
+import logging
+import time
+from contextlib import asynccontextmanager
+
+import numpy as np
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
+
+from src.api.schemas import (AnalysisResponse, AnalyzeRequest, ErrorResponse,
+                             HealthResponse)
+from src.config import API_VERSION, SAMPLES_DIR
+
+logger = logging.getLogger("waferlens.api")
+
+MAX_SIDE = 512
+MAX_UPLOAD_BYTES = 2_000_000
+ERRORS = {400: {"model": ErrorResponse}, 413: {"model": ErrorResponse},
+          422: {"model": ErrorResponse}}
+
+
+def default_pipeline_factory():
+    from src.pipeline import WaferAnalysisPipeline
+    return WaferAnalysisPipeline()
+
+
+def check_size(wafer: np.ndarray) -> np.ndarray:
+    if wafer.ndim == 2 and max(wafer.shape) > MAX_SIDE:
+        raise ValueError(f"Wafer map is {wafer.shape}; the maximum is {MAX_SIDE}x{MAX_SIDE}")
+    return wafer
+
+
+def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DIR) -> FastAPI:
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        logger.info("Loading WaferLens pipeline...")
+        start = time.perf_counter()
+        app.state.pipeline = pipeline_factory()
+        app.state.samples_dir = samples_dir
+        logger.info("Pipeline ready in %.1fs", time.perf_counter() - start)
+        yield
+        logger.info("Shutting down")
+
+    app = FastAPI(
+        title="WaferLens API",
+        version=API_VERSION,
+        description="Classifies wafer-map defect patterns and returns a cited root-cause report.",
+        lifespan=lifespan,
+    )
+
+    @app.middleware("http")
+    async def add_process_time(request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        response.headers["X-Process-Time-Ms"] = f"{(time.perf_counter() - start) * 1000:.1f}"
+        return response
+
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError):
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    def get_pipeline(request: Request):
+        return request.app.state.pipeline
+
+    @app.get("/health", response_model=HealthResponse, tags=["system"])
+    def health(pipeline=Depends(get_pipeline)):
+        parts = {
+            "classifier": pipeline.classifier is not None,
+            "retriever": pipeline.retriever is not None,
+            "similar_index": pipeline.similar_index is not None,
+            "llm": pipeline.llm is not None,
+        }
+        return HealthResponse(
+            status="ok" if all(parts.values()) else "degraded",
+            model_epoch=getattr(pipeline.classifier, "model_epoch", None),
+            version=API_VERSION,
+            **parts,
+        )
+
+    @app.post("/analyze", response_model=AnalysisResponse, responses=ERRORS, tags=["analysis"])
+    def analyze(body: AnalyzeRequest, pipeline=Depends(get_pipeline)):
+        wafer = check_size(np.asarray(body.wafer_map))
+        return pipeline.analyze(wafer).to_dict()
+
+    @app.post("/analyze/file", response_model=AnalysisResponse, responses=ERRORS, tags=["analysis"])
+    async def analyze_file(file: UploadFile = File(..., description="A 2D .npy wafer map"),
+                           pipeline=Depends(get_pipeline)):
+        if not (file.filename or "").lower().endswith(".npy"):
+            raise HTTPException(status_code=400, detail="Upload a .npy file")
+
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large (max 2 MB)")
+
+        try:
+            wafer = np.load(io.BytesIO(content), allow_pickle=False)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Could not read the file as a numeric .npy array")
+
+        result = await run_in_threadpool(pipeline.analyze, check_size(wafer))
+        return result.to_dict()
+
+    return app
+
+
+app = create_app()
