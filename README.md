@@ -50,8 +50,6 @@ flowchart LR
 
 ## Results
 
-## Results
-
 All numbers come from `results/*.json`, produced by the evaluation scripts (`python -m scripts.results_table`).
 
 ### Defect classifier (CNN)
@@ -108,8 +106,6 @@ The pipeline always filters by the predicted pattern, and that path passes every
 | Report time, cached | 220 ms |
 
 The remaining 11% fell back to the template report when the free-tier LLM was unavailable, so a report was still returned every time. Fresh calls are slow on the free tier; caching by prompt makes repeat patterns near-instant.
-
-[RESULTS TABLES]
 
 ## Example report
 
