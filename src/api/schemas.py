@@ -42,10 +42,23 @@ class AnalysisResponse(BaseModel):
     timings_ms: dict[str, float]
 
 
+def _example_wafer(size: int = 12) -> list[list[int]]:
+    """A small round wafer with a Center-style blob of failures, for the /docs example."""
+    c = (size - 1) / 2
+    rows = []
+    for i in range(size):
+        row = []
+        for j in range(size):
+            r = ((i - c) ** 2 + (j - c) ** 2) ** 0.5
+            row.append(0 if r > c + 0.5 else 2 if r < 2.5 else 1)
+        rows.append(row)
+    return rows
+
+
 class AnalyzeRequest(BaseModel):
     wafer_map: list[list[int]] = Field(
         description="2D grid: 0 = no die, 1 = pass, 2 = fail. Any size from 10x10 to 512x512.",
-        examples=[[[0, 1, 1, 1, 0]] * 2 + [[1, 1, 2, 1, 1]] * 6 + [[0, 1, 1, 1, 0]] * 2],
+        examples=[_example_wafer()],
     )
 
 
