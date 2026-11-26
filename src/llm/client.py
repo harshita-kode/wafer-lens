@@ -16,7 +16,7 @@ class LLMClient(Protocol):
 
 
 def _require_key(name: str) -> str:
-    key = os.getenv(name)
+    key = (os.getenv(name) or "").strip()
     if not key:
         raise RuntimeError(f"{name} is not set. Add it to your .env file (see .env.example).")
     return key
