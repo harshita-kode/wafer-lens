@@ -173,3 +173,14 @@ def test_past_wafers_unavailable_is_503(samples_dir):
     app = create_app(pipeline_factory=FakePipeline, samples_dir=samples_dir, past_store_factory=broken)
     with TestClient(app) as c:
         assert c.get("/past-wafers/1").status_code == 503
+
+def test_index_page_is_served(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "WAFERLENS" in response.text
+
+
+def test_static_files_are_served(client):
+    assert client.get("/static/app.js").status_code == 200
+    assert client.get("/static/styles.css").status_code == 200

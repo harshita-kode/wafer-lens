@@ -8,6 +8,10 @@ import numpy as np
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from src.config import API_VERSION, FRONTEND_DIR, SAMPLES_DIR
 
 from src.api.schemas import (AnalysisResponse, AnalyzeRequest, ErrorResponse,
                              HealthResponse, SampleList, SampleWafer, PastWafer)
@@ -138,6 +142,12 @@ def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DI
             return store.get(index)
         except IndexError:
             raise HTTPException(status_code=404, detail=f"No past wafer #{index}")
+
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def index():
+        return FileResponse(FRONTEND_DIR / "index.html")
 
     return app
 
