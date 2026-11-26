@@ -22,6 +22,7 @@ class Report:
     patterns: list[str]
     sources: list[dict]
     generated_by: str                 # "llm" or "template"
+    body: str  
     warnings: list[str] = field(default_factory=list)
 
 
@@ -103,6 +104,7 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
         patterns=patterns,
         sources=cited_sources,
         generated_by=generated_by,
+        body=body,
         warnings=warnings,
     )
 

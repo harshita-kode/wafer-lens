@@ -19,6 +19,7 @@ class AnalysisResult:
     generated_by: str
     warnings: list[str] = field(default_factory=list)
     timings_ms: dict = field(default_factory=dict)
+    report_body: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -94,6 +95,7 @@ class WaferAnalysisPipeline:
             generated_by=report.generated_by,
             warnings=warnings + report.warnings,
             timings_ms=timings,
+            report_body=report.body,
         )
 
 

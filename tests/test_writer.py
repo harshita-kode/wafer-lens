@@ -141,3 +141,10 @@ def test_similar_section_comes_before_sources():
 def test_no_similar_section_when_none_given():
     md = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(GOOD_REPLY)).markdown
     assert "Similar past wafers" not in md
+
+def test_body_has_only_the_written_sections():
+    report = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(GOOD_REPLY), similar=SIMILAR)
+    assert report.body.startswith("**What this usually means:**")
+    assert "Pattern detected" not in report.body
+    assert "Similar past wafers" not in report.body
+    assert "**Sources:**" not in report.body

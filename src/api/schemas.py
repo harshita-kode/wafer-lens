@@ -40,6 +40,7 @@ class AnalysisResponse(BaseModel):
     generated_by: Literal["llm", "template"]
     warnings: list[str]
     timings_ms: dict[str, float]
+    report_body: str = Field("", description="The report sections only, for UIs that show the header, similar wafers and sources separately")
 
 
 def _example_wafer(size: int = 12) -> list[list[int]]:
