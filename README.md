@@ -128,6 +128,8 @@ More in [results/sample_reports.md](results/sample_reports.md).
 
 **Requirements:** Python 3.11+, about 5 GB free disk, a free [Gemini API key](https://aistudio.google.com) (optional: without it, reports use the template fallback).
 
+For the exact versions this was tested with: `pip install -r requirements.lock.txt`
+
 ```bash
 git clone https://github.com/harshita-kode/wafer-lens.git
 cd wafer-lens
