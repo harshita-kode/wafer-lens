@@ -16,5 +16,5 @@ google-genai
 fastapi
 uvicorn
 python-multipart
-httpx	
+httpx
 requests

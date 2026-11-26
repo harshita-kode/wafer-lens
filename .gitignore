@@ -9,6 +9,8 @@ chroma_db/
 # C extensions
 *.so
 
+*.npz
+
 # data
 data/raw/
 
