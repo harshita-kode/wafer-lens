@@ -143,3 +143,33 @@ def test_process_time_header(client):
 def test_docs_example_is_a_valid_wafer(client):
     example = AnalyzeRequest.model_fields["wafer_map"].examples[0]
     assert client.post("/analyze", json={"wafer_map": example}).status_code == 200
+
+class FakeStore:
+    def get(self, index):
+        if index != 1:
+            raise IndexError(index)
+        return {"index": 1, "label": "Scratch", "wafer_map": [[1] * 20 for _ in range(20)]}
+
+
+@pytest.fixture
+def client(samples_dir):
+    app = create_app(pipeline_factory=FakePipeline, samples_dir=samples_dir,
+                     past_store_factory=FakeStore)
+    with TestClient(app) as c:
+        yield c
+
+def test_past_wafer_found(client):
+    body = client.get("/past-wafers/1").json()
+    assert body["label"] == "Scratch" and len(body["wafer_map"]) == 20
+
+
+def test_past_wafer_out_of_range_is_404(client):
+    assert client.get("/past-wafers/999").status_code == 404
+
+
+def test_past_wafers_unavailable_is_503(samples_dir):
+    def broken():
+        raise FileNotFoundError("no data")
+    app = create_app(pipeline_factory=FakePipeline, samples_dir=samples_dir, past_store_factory=broken)
+    with TestClient(app) as c:
+        assert c.get("/past-wafers/1").status_code == 503

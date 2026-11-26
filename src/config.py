@@ -42,3 +42,6 @@ SIMILAR_K = 5
 # ---------- API ----------
 SAMPLES_DIR = PROJECT_ROOT / "samples"
 API_VERSION = "1.0.0"
+
+PAST_WAFERS_PATH = DATA_DIR / "processed" / "wafers_64.npz"
+FRONTEND_DIR = PROJECT_ROOT / "frontend"

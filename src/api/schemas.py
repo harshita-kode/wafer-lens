@@ -42,6 +42,10 @@ class AnalysisResponse(BaseModel):
     timings_ms: dict[str, float]
     report_body: str = Field("", description="The report sections only, for UIs that show the header, similar wafers and sources separately")
 
+class PastWafer(BaseModel):
+    index: int
+    label: str
+    wafer_map: list[list[int]]
 
 def _example_wafer(size: int = 12) -> list[list[int]]:
     """A small round wafer with a Center-style blob of failures, for the /docs example."""

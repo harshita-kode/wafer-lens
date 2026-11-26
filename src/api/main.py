@@ -10,7 +10,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 from src.api.schemas import (AnalysisResponse, AnalyzeRequest, ErrorResponse,
-                             HealthResponse, SampleList, SampleWafer)
+                             HealthResponse, SampleList, SampleWafer, PastWafer)
 from src.config import API_VERSION, SAMPLES_DIR
 
 logger = logging.getLogger("waferlens.api")
@@ -25,6 +25,9 @@ def default_pipeline_factory():
     from src.pipeline import WaferAnalysisPipeline
     return WaferAnalysisPipeline()
 
+def default_past_store_factory():
+    from src.similar.store import PastWaferStore
+    return PastWaferStore()
 
 def check_size(wafer: np.ndarray) -> np.ndarray:
     if wafer.ndim == 2 and max(wafer.shape) > MAX_SIDE:
@@ -32,7 +35,8 @@ def check_size(wafer: np.ndarray) -> np.ndarray:
     return wafer
 
 
-def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DIR) -> FastAPI:
+def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DIR,
+               past_store_factory=default_past_store_factory) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -40,6 +44,11 @@ def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DI
         start = time.perf_counter()
         app.state.pipeline = pipeline_factory()
         app.state.samples_dir = samples_dir
+        try:
+            app.state.past_store = past_store_factory()
+        except Exception as e:
+            logger.warning("Past wafer maps unavailable: %s", e)
+            app.state.past_store = None
         logger.info("Pipeline ready in %.1fs", time.perf_counter() - start)
         yield
         logger.info("Shutting down")
@@ -117,6 +126,18 @@ def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DI
             raise HTTPException(status_code=404, detail=f"Unknown sample '{name}'")
         wafer = np.load(request.app.state.samples_dir / f"{name}.npy", allow_pickle=False)
         return SampleWafer(name=name, wafer_map=wafer.tolist())
+
+    @app.get("/past-wafers/{index}", response_model=PastWafer,
+             responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+             tags=["samples"])
+    def past_wafer(index: int, request: Request):
+        store = request.app.state.past_store
+        if store is None:
+            raise HTTPException(status_code=503, detail="Past wafer maps are not available on this server")
+        try:
+            return store.get(index)
+        except IndexError:
+            raise HTTPException(status_code=404, detail=f"No past wafer #{index}")
 
     return app
 
