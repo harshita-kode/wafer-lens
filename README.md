@@ -2,7 +2,8 @@
 
 **An AI assistant for semiconductor wafer defect analysis.** Upload a wafer map, and WaferLens identifies the failure pattern with a CNN, retrieves what typically causes it from a curated knowledge base of published research, and writes a short root-cause report with every claim cited.
 
-![WaferLens analysing an Edge-Ring wafer](docs/images/ui.png)
+![WaferLens analysing an Edge-Ring wafer](results/images/ui.png)
+![Demo: picking samples and uploading a wafer](results/images/demo.gif)
 
 Built with **PyTorch · ChromaDB · sentence-transformers · Gemini · FastAPI** on the real-world [WM-811K](https://doi.org/10.1109/TSM.2014.2364237) dataset (811,457 production wafer maps).
 
@@ -121,7 +122,7 @@ The remaining 11% fell back to the template report when the free-tier LLM was un
 > **Suggested checks:**
 > - Inspect the coat and develop modules first [S2]
 
-More in [docs/sample_reports.md](docs/sample_reports.md).
+More in [results/sample_reports.md](results/sample_reports.md).
 
 ## Quick start
 
