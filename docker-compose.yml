@@ -1,0 +1,14 @@
+services:
+  waferlens:
+    build: .
+    image: waferlens:1.0
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - llm-cache:/app/.cache
+    restart: unless-stopped
+
+volumes:
+  llm-cache:
