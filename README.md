@@ -149,7 +149,18 @@ python -m scripts.analyze_wafer --export-samples
 uvicorn src.api.main:app
 ```
 
-Open **http://127.0.0.1:8000** for the UI, or **/docs** for the interactive API.
+Open **http://127.0.0.1:8000** for the UI, or **/results** for the interactive API.
+
+## Run with Docker
+
+Needs [Docker Desktop](https://www.docker.com/products/docker-desktop/), plus `models/wafer_cnn.pt` (from the v1.0 release) and `data/processed/wafers_64.npz` (from notebook 02) in place locally.
+
+```bash
+copy .env.example .env      # add your GEMINI_API_KEY (optional)
+docker compose up --build
+```
+
+Open http://localhost:8000. The image builds both vector indexes and caches the embedding model at build time, runs as a non-root user, and needs network access only for LLM calls. Report cache is kept in a Docker volume across restarts.
 
 ## API
 
