@@ -1,0 +1,22 @@
+# Never send secrets or local environments into the build
+.env
+venv/
+.venv/
+.git/
+
+# Generated locally; rebuilt inside the image
+chroma_db/
+.cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Not needed to run the app
+data/raw/
+notebooks/
+figures/
+results/
+tests/
+.vscode/
+*.md
+!knowledge_base/*.md
