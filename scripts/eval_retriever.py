@@ -44,13 +44,23 @@ def check_questions(r: KnowledgeRetriever) -> None:
     n = len(QUESTIONS)
     print(f"\n  Top-1 hit rate: {hit1}/{n} ({hit1 / n:.0%})")
     print(f"  Top-3 hit rate: {hit3}/{n} ({hit3 / n:.0%})")
+    return {"questions": n, "top1_hit_rate": round(hit1 / n, 3), "top3_hit_rate": round(hit3 / n, 3)}
 
 
 def main() -> int:
+    import json
+    from src.config import PROJECT_ROOT
+
     r = KnowledgeRetriever()
     failures = check_patterns(r)
-    check_questions(r)
+    metrics = check_questions(r)
+    metrics["pattern_checks_passed"] = len(r.classes) - failures
+    metrics["pattern_checks_total"] = len(r.classes)
+
+    out = PROJECT_ROOT / "results" / "retriever_eval.json"
+    out.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(f"\n{'All pattern checks passed' if failures == 0 else f'{failures} pattern check(s) failed'}")
+    print(f"Saved {out.relative_to(PROJECT_ROOT)}")
     return 1 if failures else 0
 
 
