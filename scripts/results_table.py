@@ -57,6 +57,16 @@ def main() -> None:
         blocks.append("### LLM reports\n\n| Metric | Value |\n|---|---|\n" +
                       "\n".join(f"| {k} | {v} |" for k, v in rows))
 
+    if a := load("agent_eval.json"):
+        blocks.append("### Investigation agent (uncertain wafers)\n\n"
+                      "| Metric | Value |\n|---|---|\n"
+                      f"| Uncertain test wafers | {a['uncertain_wafers']} |\n"
+                      f"| Top-1 accuracy, CNN alone | {a['cnn_top1_accuracy']:.1%} |\n"
+                      f"| Top-1 accuracy, with agent | {a['agent_top1_accuracy']:.1%} |\n"
+                      f"| Resolved by investigation | {a['resolved_rate']:.0%} |\n"
+                      f"| Accuracy when resolved | {a['resolved_accuracy']:.1%} |\n"
+                      f"| True pattern among the two reported (unresolved) | {a['unresolved_top2_coverage']:.1%} |")
+
     print("\n\n".join(blocks) if blocks else "No results found in results/")
 
 

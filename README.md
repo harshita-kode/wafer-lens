@@ -107,6 +107,17 @@ The pipeline always filters by the predicted pattern, and that path passes every
 
 The remaining 11% fell back to the template report when the free-tier LLM was unavailable, so a report was still returned every time. Fresh calls are slow on the free tier; caching by prompt makes repeat patterns near-instant.
 
+### Investigation agent (uncertain wafers)
+
+When the CNN's confidence is below 70%, a LangGraph agent re-ranks its top two candidates using test-time augmentation (8 rotations and mirror images) and a vote of the 5 most similar past wafers. Thresholds were tuned on the validation set and reported once on the test set.
+
+| Metric (test set, 955 uncertain wafers) | CNN alone | With agent |
+|---|---|---|
+| Top-1 accuracy on uncertain wafers | 60.1% | **68.5%** |
+| Overall test accuracy | 89.4% | **≈ 91.0%** |
+
+The agent marks a case as *resolved* only when the evidence is strong (score ≥ 0.7, margin ≥ 0.2): 31% of uncertain wafers, 88.6% correct. The rest are reported as uncertain with both candidates; the true pattern is one of the two in 85.9% of those cases.
+
 ## Example report
 
 > **Pattern detected:** Center (98% confidence)
