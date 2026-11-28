@@ -148,3 +148,34 @@ def test_body_has_only_the_written_sections():
     assert "Pattern detected" not in report.body
     assert "Similar past wafers" not in report.body
     assert "**Sources:**" not in report.body
+
+FACTS = {"dies": 100, "failed_dies": 30, "fail_rate": 0.3,
+         "failure_share_by_zone": {"center": 0.1, "middle": 0.1, "edge": 0.8}}
+
+
+def test_facts_section_comes_after_header():
+    md = write_report(CONFIDENT, RETRIEVAL, llm=FakeLLM(GOOD_REPLY), facts=FACTS).markdown
+    assert "**This wafer:** 30 of 100 dies failed (30%); 80% of failures are in the edge zone." in md
+    assert md.index("Pattern detected") < md.index("This wafer") < md.index("What this usually means")
+
+
+def test_use_llm_false_never_calls_llm():
+    class ExplodingLLM:
+        def generate(self, system, user):
+            raise AssertionError("LLM must not be called")
+    report = write_report(CONFIDENT, RETRIEVAL, llm=ExplodingLLM(), use_llm=False)
+    assert report.generated_by == "template" and report.warnings == []
+
+
+def test_feedback_is_added_to_prompt():
+    fake = FakeLLM(GOOD_REPLY)
+    write_report(CONFIDENT, RETRIEVAL, llm=fake, feedback=["2 bullet(s) have no citation"])
+    assert "REVISION" in fake.last_user and "2 bullet(s) have no citation" in fake.last_user
+
+
+def test_investigated_header_shows_cnn_opinion():
+    decided = {"label": "Edge-Loc", "confidence": 0.72, "uncertain": False, "resolved_by": "investigation",
+               "cnn_label": "Loc", "cnn_confidence": 0.55,
+               "top_k": [{"label": "Edge-Loc", "confidence": 0.72}, {"label": "Loc", "confidence": 0.2}]}
+    md = write_report(decided, RETRIEVAL, llm=FakeLLM(GOOD_REPLY)).markdown
+    assert "Edge-Loc (evidence score 72%), resolved by investigation; the CNN alone said Loc (55%)" in md

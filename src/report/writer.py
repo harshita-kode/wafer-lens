@@ -27,11 +27,30 @@ class Report:
 
 
 def format_header(prediction: dict) -> str:
+    by = prediction.get("resolved_by")
+    if by == "investigation":
+        return (f"**Pattern detected:** {prediction['label']} (evidence score {prediction['confidence']:.0%}), "
+                f"resolved by investigation; the CNN alone said {prediction['cnn_label']} "
+                f"({prediction['cnn_confidence']:.0%})")
+    if by == "unresolved":
+        a, b = prediction["top_k"][:2]
+        return (f"**Pattern detected:** uncertain between {a['label']} (evidence {a['confidence']:.0%}) "
+                f"and {b['label']} ({b['confidence']:.0%}); the CNN alone said {prediction['cnn_label']} "
+                f"({prediction['cnn_confidence']:.0%})")
+
     line = f"**Pattern detected:** {prediction['label']} ({prediction['confidence']:.0%} confidence)"
     if prediction["uncertain"] and len(prediction["top_k"]) > 1:
         second = prediction["top_k"][1]
         line += f", uncertain; possibly {second['label']} ({second['confidence']:.0%})"
     return line
+
+def format_facts(facts: dict) -> str:
+    zones = facts["failure_share_by_zone"]
+    line = f"**This wafer:** {facts['failed_dies']} of {facts['dies']} dies failed ({facts['fail_rate']:.0%})"
+    if facts["failed_dies"]:
+        zone, share = max(zones.items(), key=lambda kv: kv[1])
+        line += f"; {share:.0%} of failures are in the {zone} zone"
+    return line + "."
 
 def format_similar(similar: list[dict], predicted_label: str) -> str:
     same = sum(s["label"] == predicted_label for s in similar)
@@ -59,25 +78,27 @@ def template_body(patterns: list[str], notes: list[tuple[dict, str]]) -> str:
 
 
 def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None,
-                 similar: list[dict] | None = None) -> Report:
+                 similar: list[dict] | None = None, facts: dict | None = None,
+                 feedback: list[str] | None = None, use_llm: bool = True) -> Report:
     chunks, patterns = retrieval["chunks"], retrieval["patterns"]
     labels = label_sources(chunks)
     notes = [(c, renumber_citations(c, labels)) for c in chunks]
     warnings = []
 
-    # 1. Ask the LLM; fall back to a template if anything goes wrong
-    try:
-        llm = llm or get_llm()
-        body = llm.generate(SYSTEM_PROMPT, build_user_prompt(prediction, patterns, notes, labels))
-        if not body:
-            raise ValueError("empty response")
-        generated_by = "llm"
-    except Exception as e:
-        warnings.append(f"LLM unavailable, used template report ({e})")
-        body = template_body(patterns, notes)
-        generated_by = "template"
-
-    body = normalize_bullets(body)
+    # 1. Ask the LLM (unless told not to); fall back to a template if anything goes wrong
+    if not use_llm:
+        body, generated_by = template_body(patterns, notes), "template"
+    else:
+        try:
+            llm = llm or get_llm()
+            body = llm.generate(SYSTEM_PROMPT,
+                                build_user_prompt(prediction, patterns, notes, labels, feedback=feedback))
+            if not body:
+                raise ValueError("empty response")
+            generated_by = "llm"
+        except Exception as e:
+            warnings.append(f"LLM unavailable, used template report ({e})")
+            body, generated_by = template_body(patterns, notes), "template"
 
     # 2. Check citations against the sources we actually provided
     known = {label for label, _ in labels.values()}
@@ -92,12 +113,12 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
 
     # 3. Assemble: header (code) + body (LLM) + sources (code)
     cited_sources = [{"label": label, **s} for label, s in labels.values() if label in valid_cited]
-    parts = [format_header(prediction), body]
+    parts = [format_header(prediction)]
+    if facts:
+        parts.append(format_facts(facts))
+    parts.append(body)
     if similar:
         parts.append(format_similar(similar, prediction["label"]))
-    if cited_sources:
-        parts.append("**Sources:**\n" + "\n".join(
-            f"- [{s['label']}] {format_source(s)}" for s in cited_sources))
 
     return Report(
         markdown="\n\n".join(parts),

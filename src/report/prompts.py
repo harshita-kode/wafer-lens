@@ -66,18 +66,22 @@ def _task_instructions(prediction: dict, patterns: list[str]) -> str:
     )
 
 
-def build_user_prompt(prediction: dict, patterns: list[str],
-                      notes: list[tuple[dict, str]], labels: dict) -> str:
-    """notes = [(chunk, text_with_global_labels), ...]"""
+def build_user_prompt(prediction: dict, patterns: list[str], notes: list[tuple[dict, str]],
+                      labels: dict, feedback: list[str] | None = None) -> str:
     sources_block = "\n".join(f"[{label}] {format_source(s)}" for label, s in labels.values())
     notes_block = "\n\n".join(
         f"### Note {i}: {chunk['pattern']} | {chunk['section']}\n{text}"
         for i, (chunk, text) in enumerate(notes, start=1)
     )
-    return (
+    prompt = (
         f"PREDICTION\nPredicted pattern: {prediction['label']}\n"
         f"Patterns to explain: {', '.join(patterns)}\n\n"
         f"SOURCES\n{sources_block}\n\n"
         f"NOTES\n{notes_block}\n\n"
         f"TASK\n{_task_instructions(prediction, patterns)}"
     )
+    if feedback:
+        prompt += ("\n\nREVISION\nYour previous answer had these problems:\n"
+                   + "\n".join(f"- {f}" for f in feedback)
+                   + "\nWrite the whole answer again, fixing them.")
+    return prompt
