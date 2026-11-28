@@ -20,6 +20,9 @@ class AnalysisResult:
     warnings: list[str] = field(default_factory=list)
     timings_ms: dict = field(default_factory=dict)
     report_body: str = ""
+    wafer_facts: dict | None = None
+    investigation: dict | None = None
+    agent_steps: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
