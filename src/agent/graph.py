@@ -29,6 +29,7 @@ class AgentState(TypedDict, total=False):
 
 
 class WaferAgent:
+    mode = "agent"
     def __init__(self, classifier=None, retriever=None, similar_index=None, llm=None,
                  similar_k: int = SIMILAR_K, use_similar: bool = True, max_writes: int = AGENT_MAX_WRITES):
         base = WaferAnalysisPipeline(classifier, retriever, similar_index, llm, similar_k, use_similar)

@@ -29,6 +29,7 @@ class AnalysisResult:
 
 
 class WaferAnalysisPipeline:
+    mode = "pipeline"
     """Holds every component once; analyze() can then be called many times."""
 
     def __init__(self, classifier=None, retriever=None, similar_index=None, llm=None,

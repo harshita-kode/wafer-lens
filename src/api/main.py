@@ -15,7 +15,7 @@ from src.config import API_VERSION, FRONTEND_DIR, SAMPLES_DIR
 
 from src.api.schemas import (AnalysisResponse, AnalyzeRequest, ErrorResponse,
                              HealthResponse, SampleList, SampleWafer, PastWafer)
-from src.config import API_VERSION, SAMPLES_DIR
+from src.config import API_VERSION, SAMPLES_DIR, ANALYSIS_MODE
 
 logger = logging.getLogger("waferlens.api")
 
@@ -26,8 +26,13 @@ ERRORS = {400: {"model": ErrorResponse}, 413: {"model": ErrorResponse},
 
 
 def default_pipeline_factory():
-    from src.pipeline import WaferAnalysisPipeline
-    return WaferAnalysisPipeline()
+    if ANALYSIS_MODE == "agent":
+        from src.agent.graph import WaferAgent
+        return WaferAgent()
+    if ANALYSIS_MODE == "pipeline":
+        from src.pipeline import WaferAnalysisPipeline
+        return WaferAnalysisPipeline()
+    raise ValueError(f"Unknown ANALYSIS_MODE '{ANALYSIS_MODE}'. Use 'agent' or 'pipeline'.")
 
 def default_past_store_factory():
     from src.similar.store import PastWaferStore
@@ -88,6 +93,7 @@ def create_app(pipeline_factory=default_pipeline_factory, samples_dir=SAMPLES_DI
         }
         return HealthResponse(
             status="ok" if all(parts.values()) else "degraded",
+            mode=getattr(pipeline, "mode", "pipeline"),
             model_epoch=getattr(pipeline.classifier, "model_epoch", None),
             version=API_VERSION,
             **parts,

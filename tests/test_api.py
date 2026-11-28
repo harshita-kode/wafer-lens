@@ -8,6 +8,7 @@ from src.api.main import create_app
 from src.classifier.preprocess import validate_wafer
 from src.api.schemas import AnalyzeRequest
 from src.pipeline import AnalysisResult
+import src.api.main as api_main
 
 PREDICTION = {"label": "Scratch", "confidence": 0.92, "uncertain": False,
               "top_k": [{"label": "Scratch", "confidence": 0.92}, {"label": "Loc", "confidence": 0.05}]}
@@ -184,3 +185,54 @@ def test_index_page_is_served(client):
 def test_static_files_are_served(client):
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/static/styles.css").status_code == 200
+
+
+
+class FakeAgent(FakePipeline):
+    mode = "agent"
+
+    def analyze(self, wafer_map):
+        result = super().analyze(wafer_map)
+        result.prediction = {**PREDICTION, "resolved_by": "investigation",
+                             "cnn_label": "Loc", "cnn_confidence": 0.55}
+        result.wafer_facts = {"dies": 400, "failed_dies": 40, "fail_rate": 0.1,
+                              "failure_share_by_zone": {"center": 0.1, "middle": 0.2, "edge": 0.7}}
+        result.investigation = {"label": "Scratch", "uncertain": False, "resolved_by": "investigation",
+                                "candidates": ["Scratch", "Loc"], "scores": {"Scratch": 0.8, "Loc": 0.2},
+                                "margin": 0.6, "tta": {"Scratch": 0.7, "Loc": 0.3},
+                                "neighbours": {"Scratch": 0.8, "Loc": 0.2},
+                                "cnn_label": "Loc", "cnn_confidence": 0.55}
+        result.agent_steps = [{"node": "classify", "summary": "CNN predicts Loc at 55%", "ms": 4.0}]
+        return result
+
+
+@pytest.fixture
+def agent_client(samples_dir):
+    app = create_app(pipeline_factory=FakeAgent, samples_dir=samples_dir, past_store_factory=FakeStore)
+    with TestClient(app) as c:
+        yield c
+
+
+def test_health_reports_mode(client, agent_client):
+    assert client.get("/health").json()["mode"] == "pipeline"
+    assert agent_client.get("/health").json()["mode"] == "agent"
+
+
+def test_agent_fields_are_returned(agent_client):
+    body = agent_client.post("/analyze", json={"wafer_map": WAFER}).json()
+    assert body["prediction"]["resolved_by"] == "investigation"
+    assert body["prediction"]["cnn_label"] == "Loc"
+    assert body["investigation"]["candidates"] == ["Scratch", "Loc"]
+    assert body["wafer_facts"]["failure_share_by_zone"]["edge"] == 0.7
+    assert body["agent_steps"][0]["node"] == "classify"
+
+
+def test_pipeline_mode_has_no_agent_fields(client):
+    body = client.post("/analyze", json={"wafer_map": WAFER}).json()
+    assert body["agent_steps"] == [] and body["investigation"] is None
+
+
+def test_unknown_mode_is_rejected(monkeypatch):
+    monkeypatch.setattr(api_main, "ANALYSIS_MODE", "magic")
+    with pytest.raises(ValueError):
+        api_main.default_pipeline_factory()
