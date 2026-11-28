@@ -159,15 +159,25 @@ function el(tag, className, text) {
 const pct = (x) => `${Math.round(x * 100)}%`;
 const formatMs = (ms) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);
 
-function renderPrediction(p) {
+function renderPrediction(result) {
+  const p = result.prediction;
+  const inv = result.investigation;
+  const unresolved = p.resolved_by === 'unresolved';
+
   $('result').dataset.uncertain = String(p.uncertain);
-  $('pattern').textContent = p.label;
+  $('pattern').textContent = unresolved ? `${p.top_k[0].label} / ${p.top_k[1].label}` : p.label;
+  $('pattern').classList.toggle('pair', unresolved);
+
+  $('resolved-badge').hidden = p.resolved_by !== 'investigation';
   $('uncertain-badge').hidden = !p.uncertain;
+  $('uncertain-badge').textContent = unresolved ? 'STILL UNCERTAIN AFTER INVESTIGATION' : 'UNCERTAIN · BELOW 70%';
+
+  $('conf-label').textContent = inv ? 'Evidence score' : 'Confidence';
   $('conf-text').textContent = pct(p.confidence);
 
   const filled = Math.round(p.confidence * 20);
   $('blocks').replaceChildren(...Array.from({ length: 20 }, (_, i) => el('div', i < filled ? 'block on' : 'block')));
-  $('blocks').setAttribute('aria-label', `Confidence ${pct(p.confidence)}`);
+  $('blocks').setAttribute('aria-label', `${inv ? 'Evidence score' : 'Confidence'} ${pct(p.confidence)}`);
 
   $('topk').replaceChildren(...p.top_k.map((t) => {
     const row = el('div', 'topk-row');
@@ -177,6 +187,58 @@ function renderPrediction(p) {
     bar.append(fill);
     row.append(el('span', 'topk-name', t.label), bar, el('span', 'topk-pct mono', pct(t.confidence)));
     return row;
+  }));
+
+  renderInvestigation(inv);
+}
+
+function renderInvestigation(inv) {
+  $('investigation').hidden = !inv;
+  if (!inv) return;
+
+  const said = `The CNN alone said ${inv.cnn_label} (${pct(inv.cnn_confidence)}).`;
+  $('inv-note').textContent = inv.resolved_by === 'investigation'
+    ? `${said} Rotated views and similar past wafers point to ${inv.label}.`
+    : `${said} The extra evidence was not strong enough to decide.`;
+
+  $('inv-rows').replaceChildren(...inv.candidates.map((c) => {
+    const row = el('tr');
+    const name = el('th', '', c);
+    name.scope = 'row';
+    row.append(name, el('td', '', pct(inv.tta[c])), el('td', '', pct(inv.neighbours[c])), el('td', '', pct(inv.scores[c])));
+    return row;
+  }));
+}
+
+function renderFacts(facts) {
+  $('facts').hidden = !facts;
+  if (!facts) return;
+
+  $('facts-text').textContent = `${facts.failed_dies} of ${facts.dies} dies failed (${pct(facts.fail_rate)})`;
+  const zones = [['center', 'Centre'], ['middle', 'Middle'], ['edge', 'Edge']];
+  $('zone-bar').replaceChildren(...zones.map(([key]) => {
+    const part = el('span', `zone-${key}`);
+    part.style.width = `${Math.round((facts.failure_share_by_zone[key] || 0) * 100)}%`;
+    return part;
+  }));
+  $('zone-legend').replaceChildren(...zones.map(([key, name]) =>
+    el('span', '', `${name} ${pct(facts.failure_share_by_zone[key] || 0)}`)));
+}
+
+function renderSteps(steps, timings) {
+  $('agent-panel').hidden = !steps.length;
+  if (!steps.length) return;
+
+  $('agent-total').textContent = `${steps.length} STEPS · ${formatMs(timings.total)}`;
+  $('steps').replaceChildren(...steps.map((step, i) => {
+    const item = el('li', 'step');
+    item.append(
+      el('span', 'step-num mono', String(i + 1).padStart(2, '0')),
+      el('span', `step-node px kind-${step.node}`, step.node),
+      el('span', 'step-summary', step.summary),
+      el('span', 'step-ms mono', formatMs(step.ms)),
+    );
+    return item;
   }));
 }
 
@@ -236,23 +298,29 @@ async function renderSimilar(similar, predicted) {
 }
 
 function renderTimings(t) {
-  const part = (name, key) => `${name} ${t[key] !== undefined ? formatMs(t[key]) : '—'}`;
-  $('timings').textContent = [part('CLASSIFY', 'classify'), part('SIMILAR', 'similar'),
-                              part('RETRIEVE', 'retrieve'), part('REPORT', 'report')].join(' · ');
+  const parts = Object.entries(t)
+    .filter(([key]) => key !== 'total')
+    .map(([key, ms]) => `${key.toUpperCase()} ${formatMs(ms)}`);
+  if (t.total !== undefined) parts.push(`TOTAL ${formatMs(t.total)}`);
+  $('timings').textContent = parts.join(' · ');
 }
 
 function renderResult(result) {
-  renderPrediction(result.prediction);
+  renderPrediction(result);
+  renderFacts(result.wafer_facts);
   renderReport(result);
+  renderSteps(result.agent_steps || [], result.timings_ms);
   renderTimings(result.timings_ms);
   renderSimilar(result.similar_wafers, result.prediction.label);
 }
 
-function resetResult() {
-  $('pattern').textContent = '—';
-  $('conf-text').textContent = '—';
-  $('uncertain-badge').hidden = true;
-  $('report-meta').textContent = 'WAITING FOR A WAFER';
+function renderResult(result) {
+  renderPrediction(result);
+  renderFacts(result.wafer_facts);
+  renderReport(result);
+  renderSteps(result.agent_steps || [], result.timings_ms);
+  renderTimings(result.timings_ms);
+  renderSimilar(result.similar_wafers, result.prediction.label);
 }
 
 /* ---------- user actions ---------- */
@@ -324,8 +392,11 @@ async function loadHealth() {
     status.dataset.state = h.status;
     const missing = [];
     if (!h.llm) missing.push('NO LLM');
-    if (!h.similar_index) missing.push('NO SIMILAR');
-    $('status-text').textContent = h.status === 'ok' ? 'API OK · LLM ON' : `DEGRADED · ${missing.join(' · ')}`;
+    if (!h.similar_index) missing.push('NO SIMILAR');    
+    const mode = h.mode === 'agent' ? 'AGENT' : 'PIPELINE';
+    $('status-text').textContent = h.status === 'ok'
+      ? `API OK · LLM ON · ${mode}`
+      : `DEGRADED · ${missing.join(' · ')} · ${mode}`;
   } catch {
     status.dataset.state = 'down';
     $('status-text').textContent = 'API OFFLINE';
