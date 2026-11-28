@@ -16,10 +16,11 @@ After fabrication, every chip on a wafer is tested and marked pass or fail. Fail
 ## What it does
 
 1. **Classifies** the wafer map into one of 9 patterns (Center, Donut, Edge-Loc, Edge-Ring, Loc, Near-full, Random, Scratch, none) and reports its confidence
-2. **Flags uncertainty**: below 70% confidence it explains the top two candidates and how to tell them apart
+2. **Investigates uncertain wafers**: below 70% confidence, a LangGraph agent re-ranks the top two candidates using rotated views of the wafer and the labels of similar past wafers, and either resolves the case or reports both candidates honestly
 3. **Retrieves** the relevant notes on causes and checks from a knowledge base written from peer-reviewed papers
 4. **Writes a cited report** with an LLM that may use *only* those notes; invented citations are removed automatically
 5. **Finds similar past wafers** using the CNN's 128-dimensional fingerprints
+6. **Measures the wafer itself**: fail rate and where failures sit (centre, middle, edge), shown alongside the report
 
 ## Architecture
 
@@ -47,6 +48,32 @@ flowchart LR
 | UI | Plain HTML/CSS/JS served by the API; canvas-rendered wafer maps; escaped report rendering |
 
 **Design principle:** numbers come from code, prose comes from the LLM. Pattern, confidence, similar-wafer counts and the source list are generated deterministically; the LLM only writes the explanation.
+
+### The investigation agent
+
+In the default `agent` mode, analysis runs as a LangGraph state graph that decides its own path:
+
+```mermaid
+flowchart TD
+    A[classify] --> B[measure] --> C[similar]
+    C -->|confident| D[decide]
+    C -->|uncertain| E[investigate]
+    D --> F{confident none?}
+    E --> F
+    F -->|yes| G[brief: no LLM call]
+    F -->|no| H[retrieve] --> I[write] --> J[review]
+    J -->|issues found, first draft| I
+    J -->|passed| K([done])
+    G --> K
+```
+
+| Node | What it does |
+|---|---|
+| `investigate` | Combines test-time augmentation (8 rotations/mirror images) with a vote of the 5 most similar past wafers; resolves only when the evidence is strong |
+| `brief` | Skips the LLM entirely for confident "no pattern" wafers |
+| `review` | Code checks on the LLM's report (sections, citations, wording); on failure the report is rewritten once with the issues as feedback |
+
+Every step is recorded with its timing and a one-line summary, returned by the API as `agent_steps` and shown in the UI. Set `ANALYSIS_MODE=pipeline` to use the simpler fixed pipeline instead.
 
 ## Results
 
