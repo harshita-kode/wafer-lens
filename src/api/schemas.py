@@ -11,9 +11,13 @@ class TopKItem(BaseModel):
 
 class Prediction(BaseModel):
     label: str = Field(description="Most likely defect pattern")
-    confidence: float = Field(ge=0, le=1, description="Probability of the predicted pattern")
-    uncertain: bool = Field(description="True when confidence is below the uncertainty threshold")
+    confidence: float = Field(ge=0, le=1, description="CNN probability, or evidence score after investigation")
+    uncertain: bool = Field(description="True when the result is still uncertain")
     top_k: list[TopKItem]
+    resolved_by: Literal["cnn", "investigation", "unresolved"] | None = Field(
+        None, description="How the agent reached this label (agent mode only)")
+    cnn_label: str | None = Field(None, description="The CNN's own top label before investigation")
+    cnn_confidence: float | None = None
 
 
 class Source(BaseModel):
@@ -30,6 +34,30 @@ class SimilarWafer(BaseModel):
     index: int = Field(description="Index of the wafer in the training set")
     similarity: float
 
+class WaferFacts(BaseModel):
+    dies: int
+    failed_dies: int
+    fail_rate: float = Field(ge=0, le=1)
+    failure_share_by_zone: dict[str, float] = Field(description="Share of failed dies in the center, middle and edge zones")
+
+
+class Investigation(BaseModel):
+    label: str
+    uncertain: bool
+    resolved_by: Literal["investigation", "unresolved"]
+    candidates: list[str]
+    scores: dict[str, float] = Field(description="Combined evidence per candidate")
+    margin: float
+    tta: dict[str, float] = Field(description="CNN probability averaged over 8 rotations/mirror images")
+    neighbours: dict[str, float] = Field(description="Share of the 5 most similar past wafers with each label")
+    cnn_label: str
+    cnn_confidence: float
+
+
+class AgentStep(BaseModel):
+    node: str
+    summary: str
+    ms: float
 
 class AnalysisResponse(BaseModel):
     prediction: Prediction
@@ -41,6 +69,9 @@ class AnalysisResponse(BaseModel):
     warnings: list[str]
     timings_ms: dict[str, float]
     report_body: str = Field("", description="The report sections only, for UIs that show the header, similar wafers and sources separately")
+    wafer_facts: WaferFacts | None = None
+    investigation: Investigation | None = None
+    agent_steps: list[AgentStep] = Field(default_factory=list)
 
 class PastWafer(BaseModel):
     index: int
@@ -69,6 +100,7 @@ class AnalyzeRequest(BaseModel):
 
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
+    mode: Literal["agent", "pipeline"]
     classifier: bool
     retriever: bool
     similar_index: bool
