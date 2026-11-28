@@ -45,3 +45,8 @@ API_VERSION = "1.0.0"
 
 PAST_WAFERS_PATH = DATA_DIR / "processed" / "wafers_64.npz"
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
+
+# ---------- Agent ----------
+AGENT_MIN_SCORE = float(os.getenv("AGENT_MIN_SCORE", "0.7"))
+AGENT_MIN_MARGIN = float(os.getenv("AGENT_MIN_MARGIN", "0.2"))
+AGENT_MAX_WRITES = 2
