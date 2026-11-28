@@ -1,116 +1,155 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WaferLens</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="/static/styles.css">
-<script src="/static/app.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WaferLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
 </head>
+
 <body>
-<div class="page">
+  <div class="page">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo" aria-hidden="true">
-        <span style="background:#3553E6"></span><span style="background:#F2603A"></span><span style="background:#3553E6"></span>
-        <span style="background:#F2603A"></span><span style="background:#F6E04A"></span><span style="background:#F2603A"></span>
-        <span style="background:#3553E6"></span><span style="background:#F2603A"></span><span style="background:#3553E6"></span>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <span style="background:#3553E6"></span><span style="background:#F2603A"></span><span
+            style="background:#3553E6"></span>
+          <span style="background:#F2603A"></span><span style="background:#F6E04A"></span><span
+            style="background:#F2603A"></span>
+          <span style="background:#3553E6"></span><span style="background:#F2603A"></span><span
+            style="background:#3553E6"></span>
+        </div>
+        <span class="px brand-name">WAFERLENS</span>
       </div>
-      <span class="px brand-name">WAFERLENS</span>
-    </div>
-    <div class="meta mono">
-      <span>Wafer map<br>defect analysis</span>
-      <span>CNN · RAG · LLM<br>cited reports</span>
-      <span class="status" id="status" data-state="loading"><span class="dot"></span><span id="status-text">CONNECTING…</span></span>
-    </div>
-  </header>
+      <div class="meta mono">
+        <span>Wafer map<br>defect analysis</span>
+        <span>CNN · RAG · LLM<br>cited reports</span>
+        <span class="status" id="status" data-state="loading"><span class="dot"></span><span
+            id="status-text">CONNECTING…</span></span>
+      </div>
+    </header>
 
-  <section class="row">
-    <div class="intro">
-      <h1>Defects,<br>explained.</h1>
-      <p class="lede">Drop in a wafer map. WaferLens names the failure pattern, finds what usually causes it in published research, and writes a short report with every claim cited.</p>
+    <section class="row">
+      <div class="intro">
+        <h1>Defects,<br>explained.</h1>
+        <p class="lede">Drop in a wafer map. WaferLens names the failure pattern, finds what usually causes it in
+          published research, and writes a short report with every claim cited.</p>
 
-      <div class="window">
-        <div class="window-bar mono"><span id="window-file">samples/</span><span aria-hidden="true">×</span></div>
-        <div class="window-body">
-          <span class="label mono">Pick a sample wafer</span>
-          <div class="samples" id="samples"></div>
-          <label class="upload">
-            <span><span class="px upload-title">Upload .npy</span><br><span class="mono hint">2D map · values 0 / 1 / 2 · max 2 MB</span></span>
-            <span class="mono browse">BROWSE</span>
-            <input id="upload-input" class="visually-hidden" type="file" accept=".npy">
-          </label>
+        <div class="window">
+          <div class="window-bar mono"><span id="window-file">samples/</span><span aria-hidden="true">×</span></div>
+          <div class="window-body">
+            <span class="label mono">Pick a sample wafer</span>
+            <div class="samples" id="samples"></div>
+            <label class="upload">
+              <span><span class="px upload-title">Upload .npy</span><br><span class="mono hint">2D map · values 0 / 1 /
+                  2 · max 2 MB</span></span>
+              <span class="mono browse">BROWSE</span>
+              <input id="upload-input" class="visually-hidden" type="file" accept=".npy">
+            </label>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="wafer-panel">
-      <div class="panel-head mono">
-        <span id="wafer-caption">Wafer map</span>
-        <span class="legend">
-          <span><span class="swatch" style="background:#3553E6"></span>Pass</span>
-          <span><span class="swatch" style="background:#F2603A"></span>Fail</span>
-          <span><span class="swatch" style="background:#F6E04A"></span>Cluster edge</span>
-        </span>
+      <div class="wafer-panel">
+        <div class="panel-head mono">
+          <span id="wafer-caption">Wafer map</span>
+          <span class="legend">
+            <span><span class="swatch" style="background:#3553E6"></span>Pass</span>
+            <span><span class="swatch" style="background:#F2603A"></span>Fail</span>
+            <span><span class="swatch" style="background:#F6E04A"></span>Cluster edge</span>
+          </span>
+        </div>
+        <div class="wafer-frame">
+          <canvas id="wafer" width="640" height="640" role="img" aria-label="Wafer map"></canvas>
+          <p class="empty mono" id="wafer-empty">Pick a sample or upload a wafer map</p>
+          <div class="facts mono" id="facts" hidden>
+            <span id="facts-text"></span>
+            <div class="zone-bar" id="zone-bar" aria-hidden="true"></div>
+            <div class="zone-legend" id="zone-legend"></div>
+          </div>
+        </div>
       </div>
-      <div class="wafer-frame">
-        <canvas id="wafer" width="640" height="640" role="img" aria-label="Wafer map"></canvas>
-        <p class="empty mono" id="wafer-empty">Pick a sample or upload a wafer map</p>
+    </section>
+
+    <section class="row">
+      <div class="result" id="result" aria-live="polite">
+        <div class="glow glow-a" aria-hidden="true"></div>
+        <div class="glow glow-b" aria-hidden="true"></div>
+        <div class="result-head">
+          <span class="label mono">Pattern detected</span>
+          <span class="badge mono" id="uncertain-badge" hidden>UNCERTAIN · BELOW 70%</span>
+          <span class="badge badge-resolved mono" id="resolved-badge" hidden>RESOLVED BY INVESTIGATION</span>
+        </div>
+        <div class="px pattern" id="pattern">—</div>
+        <div class="conf">
+          <div class="conf-head mono"><span class="label" id="conf-label">Confidence</span><span id="conf-text">—</span>
+          </div>
+          <div class="blocks" id="blocks"></div>
+        </div>
+        <div class="topk">
+          <span class="label mono">Top 3</span>
+          <div id="topk"></div>
+          <div class="investigation" id="investigation" hidden>
+            <span class="label mono">Investigation</span>
+            <p class="inv-note" id="inv-note"></p>
+            <table class="inv-table mono">
+              <thead>
+                <tr>
+                  <th scope="col">Pattern</th>
+                  <th scope="col">Rotations</th>
+                  <th scope="col">Neighbours</th>
+                  <th scope="col">Score</th>
+                </tr>
+              </thead>
+              <tbody id="inv-rows"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    </div>
+
+        <section class="window agent" id="agent-panel" hidden>
+    <div class="window-bar mono"><span>agent_trace.log</span><span id="agent-total"></span></div>
+    <ol class="steps" id="steps"></ol>
   </section>
 
-  <section class="row">
-    <div class="result" id="result" aria-live="polite">
-      <div class="glow glow-a" aria-hidden="true"></div>
-      <div class="glow glow-b" aria-hidden="true"></div>
-      <div class="result-head">
-        <span class="label mono">Pattern detected</span>
-        <span class="badge mono" id="uncertain-badge" hidden>UNCERTAIN · BELOW 70%</span>
-      </div>
-      <div class="px pattern" id="pattern">—</div>
-      <div class="conf">
-        <div class="conf-head mono"><span class="label">Confidence</span><span id="conf-text">—</span></div>
-        <div class="blocks" id="blocks"></div>
-      </div>
-      <div class="topk">
-        <span class="label mono">Top 3</span>
-        <div id="topk"></div>
-      </div>
-    </div>
+      <article class="report">
+        <div class="report-head">
+          <h2 class="px">Report</h2>
+          <span class="mono muted" id="report-meta">WAITING FOR A WAFER</span>
+        </div>
+        <div id="report-body">
+          <p class="muted">The report appears here once a wafer is analysed.</p>
+        </div>
+        <div class="warnings mono" id="warnings" hidden></div>
+        <div class="sources" id="sources-wrap" hidden>
+          <span class="label mono">Sources</span>
+          <ol id="sources"></ol>
+        </div>
+      </article>
+    </section>
 
-    <article class="report">
-      <div class="report-head">
-        <h2 class="px">Report</h2>
-        <span class="mono muted" id="report-meta">WAITING FOR A WAFER</span>
+    <section class="similar card">
+      <div class="similar-head">
+        <h2 class="px">Similar past wafers</h2>
+        <span id="similar-summary"></span>
       </div>
-      <div id="report-body"><p class="muted">The report appears here once a wafer is analysed.</p></div>
-      <div class="warnings mono" id="warnings" hidden></div>
-      <div class="sources" id="sources-wrap" hidden>
-        <span class="label mono">Sources</span>
-        <ol id="sources"></ol>
-      </div>
-    </article>
-  </section>
+      <div class="thumbs" id="thumbs"></div>
+    </section>
 
-  <section class="similar card">
-    <div class="similar-head">
-      <h2 class="px">Similar past wafers</h2>
-      <span id="similar-summary"></span>
-    </div>
-    <div class="thumbs" id="thumbs"></div>
-  </section>
+    <footer class="footer mono">
+      <span id="timings">CLASSIFY — · SIMILAR — · RETRIEVE — · REPORT —</span>
+      <span>WAFERLENS v1</span>
+    </footer>
 
-  <footer class="footer mono">
-    <span id="timings">CLASSIFY — · SIMILAR — · RETRIEVE — · REPORT —</span>
-    <span>WAFERLENS v1</span>
-  </footer>
-
-  <div class="toast mono" id="error" role="alert" hidden></div>
-</div>
+    <div class="toast mono" id="error" role="alert" hidden></div>
+  </div>
 </body>
+
 </html>
