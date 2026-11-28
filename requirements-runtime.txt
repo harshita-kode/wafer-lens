@@ -11,3 +11,4 @@ fastapi==0.165.0
 pydantic==2.14.3
 uvicorn[standard]==0.54.0
 python-multipart==0.0.34
+langgraph==1.2.24
