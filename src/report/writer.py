@@ -100,6 +100,8 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
             warnings.append(f"LLM unavailable, used template report ({e})")
             body, generated_by = template_body(patterns, notes), "template"
 
+    body = normalize_bullets(body)
+
     # 2. Check citations against the sources we actually provided
     known = {label for label, _ in labels.values()}
     cited = set(CITATION.findall(body))
@@ -111,7 +113,7 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
     if generated_by == "llm" and not valid_cited:
         warnings.append("The LLM response contains no citations")
 
-    # 3. Assemble: header (code) + body (LLM) + sources (code)
+    # 3. Assemble: header + facts (code) + body (LLM) + similar wafers + sources (code)
     cited_sources = [{"label": label, **s} for label, s in labels.values() if label in valid_cited]
     parts = [format_header(prediction)]
     if facts:
@@ -119,6 +121,9 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
     parts.append(body)
     if similar:
         parts.append(format_similar(similar, prediction["label"]))
+    if cited_sources:
+        parts.append("**Sources:**\n" + "\n".join(
+            f"- [{s['label']}] {format_source(s)}" for s in cited_sources))
 
     return Report(
         markdown="\n\n".join(parts),
@@ -128,7 +133,6 @@ def write_report(prediction: dict, retrieval: dict, llm: LLMClient | None = None
         body=body,
         warnings=warnings,
     )
-
 
 if __name__ == "__main__":
     import numpy as np
