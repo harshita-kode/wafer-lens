@@ -1,0 +1,11 @@
+{
+  "min_score": 0.7,
+  "min_margin": 0.2,
+  "uncertain_wafers": 955,
+  "cnn_top1_accuracy": 0.601,
+  "agent_top1_accuracy": 0.6848,
+  "resolved_rate": 0.311,
+  "resolved_accuracy": 0.8855,
+  "cnn_accuracy_on_resolved": 0.8586,
+  "unresolved_top2_coverage": 0.8587
+}
