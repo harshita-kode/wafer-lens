@@ -89,3 +89,9 @@ def test_accuracy_on_held_out_sample(clf):
     preds = clf.predict_batch(list(X[picks]))
     accuracy = np.mean([clf.classes.index(p["label"]) == y[i] for p, i in zip(preds, picks)])
     assert accuracy >= 0.85, f"accuracy dropped to {accuracy:.1%}"
+
+def test_full_probabilities_sum_to_one(clf):
+    probs = clf.predict_proba_batch([round_wafer(), round_wafer(50, 50)])
+    assert probs.shape == (2, len(clf.classes))
+    assert np.allclose(probs.sum(axis=1), 1.0, atol=1e-5)
+    assert clf.classes[int(probs[0].argmax())] == clf.predict(round_wafer())["label"]

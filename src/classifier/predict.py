@@ -82,6 +82,18 @@ class WaferClassifier:
 
     def embed(self, wafer_map) -> np.ndarray:
         return self.embed_batch([wafer_map])[0]
+    
+    @torch.no_grad()
+    def predict_proba_batch(self, wafer_maps, batch_size: int = 256) -> np.ndarray:
+        """All class probabilities, shape (n_wafers, n_classes)."""
+        parts = []
+        for start in range(0, len(wafer_maps), batch_size):
+            chunk = wafer_maps[start:start + batch_size]
+            parts.append(torch.softmax(self.model(self._to_batch(chunk)), dim=1).cpu().numpy())
+        return np.concatenate(parts)
+
+    def predict_batch(self, wafer_maps, top_k: int = 3, batch_size: int = 256) -> list[dict]:
+        return [self._format(p, top_k) for p in self.predict_proba_batch(wafer_maps, batch_size)]
 
 
 # ---------- simple module-level shortcut ----------
